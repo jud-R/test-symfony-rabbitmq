@@ -5,10 +5,10 @@ namespace App\Controller;
 use DateTime;
 use App\Entity\Incident;
 use App\Form\IncidentType;
+use App\Message\MailNotification;
 use Symfony\Component\Mime\Email;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,8 +18,7 @@ class HomeController extends AbstractController
     /**
      * @Route("/home", name="home")
      */
-    public function index(Request $request, EntityManagerInterface $em,
-    MailerInterface $mailer): Response
+    public function index(Request $request, EntityManagerInterface $em): Response
     {
         $task = new Incident();
         $task->setUser($this->getUser());
@@ -33,19 +32,13 @@ class HomeController extends AbstractController
 
             $em->persist($task);
             $em->flush();
+// dd($task);
 
-            $email = (new Email())
-                ->from($task->getUser()->getEmail())
-                ->to('user@test.test')
-                ->subject("New Incident #{$task->getId()} - {$task->getUser()->getEmail()}")
-                ->html("<p>{$task->getDescription()}</p>");
-                
-
-                // simulate slow process
-                sleep(8);
-
-                $mailer->send($email);
-
+            $this->dispatchMessage(new MailNotification(
+                $task->getId(), 
+                $task->getDescription(), 
+                $task->getUser()->getEmail()
+            ));
 
             return $this->redirectToRoute('home');
         }
